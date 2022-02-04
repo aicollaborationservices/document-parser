@@ -1,0 +1,36 @@
+name: Frontend
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set kubernetes secrets
+        uses: azure/k8s-set-context@v2
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+          cluster-type: kubernetes
+      
+      - name: Shell
+        run: |
+          pwd
+          ls -lisah
+          sed -i "s/<solution-owner>/${GITHUB_REPOSITORY%/*}/g" devops/kubernetes.yml
+          sed -i "s/<solution-name>/${GITHUB_REPOSITORY#*/}/g" devops/kubernetes.yml
+          sed -i "s/<version>/${{ github.sha }}/g" devops/kubernetes.yml
+          sed -i "s/<image>/axarev\/parsr/g" devops/kubernetes.yml
+
+
+      - name: k8s deployment
+        run: kubectl apply -f devops/kubernetes.yml
